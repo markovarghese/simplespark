@@ -4,14 +4,23 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import za.co.absa.abris.avro.parsing.utils.AvroSchemaUtils
 import za.co.absa.abris.config.{AbrisConfig, ToAvroConfig}
+//import za.co.absa.abris.avro.functions.to_confluent_avro
+import za.co.absa.abris.avro.read.confluent.SchemaManager
 import za.co.absa.abris.avro.functions.to_avro
+//import org.apache.spark.sql.functions._
+//import org.apache.spark.sql.avro.functions._
 
 /**
  * @author ${user.name}
  */
 object App {
 
+  def foo(x: Array[String]) = x.foldLeft("")((a, b) => a + "|" + b)
+
   def main(args: Array[String]): Unit = {
+    println("Hello World!")
+    println("concat arguments = " + foo(args))
+
     val spark: SparkSession = SparkSession
       .builder()
       .master("local[*]")
@@ -25,6 +34,21 @@ object App {
     val df = rdd.toDF("Tvalues","Pvalues")
     df.show
     val topic: String = "test123"
+    /*
+    val commonRegistryConfig = Map(
+      SchemaManager.PARAM_SCHEMA_REGISTRY_TOPIC -> topic,
+      SchemaManager.PARAM_SCHEMA_REGISTRY_URL -> "http://schema-registry:8081"
+    )
+    val valueRegistryConfig = commonRegistryConfig ++ Map(
+      SchemaManager.PARAM_VALUE_SCHEMA_NAMING_STRATEGY -> "topic.name"
+      //, SchemaManager.PARAM_VALUE_SCHEMA_ID -> "latest"
+    )
+    val keyRegistryConfig = commonRegistryConfig ++ Map(
+      SchemaManager.PARAM_KEY_SCHEMA_NAMING_STRATEGY -> "topic.name"
+      //, SchemaManager.PARAM_KEY_SCHEMA_ID -> "latest"
+    )
+    var sparkOptions = Map("kafka.bootstrap.servers" -> "broker:29092")
+    */
     var allColumns = struct(df.columns.head, df.columns.tail: _*)
     val tempdf = df.withColumn("allcolumns", allColumns)
     val schema = AvroSchemaUtils.toAvroSchema(tempdf, "allcolumns")
@@ -33,7 +57,10 @@ object App {
       .toConfluentAvro
       .provideAndRegisterSchema(schema.toString())
       .usingTopicNameStrategy(topic)
+      //.downloadSchemaByLatestVersion
+      //.andTopicNameStrategy(topic)
       .usingSchemaRegistry("http://schema-registry:8081")
+
     df.select(to_avro(allColumns, toAvroConfig) as 'value)
       .write
       .option("kafka.bootstrap.servers", "broker:29092")

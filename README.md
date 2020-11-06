@@ -104,7 +104,7 @@ java.lang.NoSuchMethodError: org.apache.kafka.clients.producer.KafkaProducer.flu
 ```
 ...and there will be no records written to the topic, either. 
 
-#### Maven Depedency Tree
+#### Maven Dependency Tree
 If you run 
 ```shell script
 docker run -e MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled" --rm -v "${PWD}":/usr/src/mymaven -v "${HOME

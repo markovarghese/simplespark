@@ -104,6 +104,188 @@ java.lang.NoSuchMethodError: org.apache.kafka.clients.producer.KafkaProducer.flu
 ```
 ...and there will be no records written to the topic, either. 
 
+#### Maven Depedency Tree
+If you run 
+```shell script
+docker run -e MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled" --rm -v "${PWD}":/usr/src/mymaven -v "${HOME
+}/.m2":/root/.m2 -w /usr/src/mymaven maven:3.6.3-jdk-8 mvn dependency:tree
+```
+
+you will get the following dependency tree
+```text
+[INFO] ----------------------< org.example:simplespark >-----------------------
+[INFO] Building simplespark 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ simplespark ---
+[INFO] org.example:simplespark:jar:1.0-SNAPSHOT
+[INFO] +- za.co.absa:abris_2.12:jar:4.0.0:compile
+[INFO] |  +- org.apache.avro:avro:jar:1.9.2:compile
+[INFO] |  |  +- com.fasterxml.jackson.core:jackson-core:jar:2.10.2:compile
+[INFO] |  |  +- org.apache.commons:commons-compress:jar:1.19:compile
+[INFO] |  |  \- org.slf4j:slf4j-api:jar:1.7.25:compile
+[INFO] |  +- org.apache.spark:spark-avro_2.12:jar:2.4.6:compile
+[INFO] |  +- io.confluent:kafka-avro-serializer:jar:5.5.1:compile
+[INFO] |  |  \- io.confluent:kafka-schema-serializer:jar:5.5.1:compile
+[INFO] |  +- io.confluent:kafka-schema-registry-client:jar:5.5.1:compile
+[INFO] |  |  +- org.apache.kafka:kafka-clients:jar:5.5.1-ccs:compile
+[INFO] |  |  +- javax.ws.rs:javax.ws.rs-api:jar:2.1.1:compile
+[INFO] |  |  +- org.glassfish.jersey.core:jersey-common:jar:2.30:compile
+[INFO] |  |  |  +- jakarta.ws.rs:jakarta.ws.rs-api:jar:2.1.6:compile
+[INFO] |  |  |  +- jakarta.annotation:jakarta.annotation-api:jar:1.3.5:compile
+[INFO] |  |  |  +- org.glassfish.hk2.external:jakarta.inject:jar:2.6.1:compile
+[INFO] |  |  |  \- org.glassfish.hk2:osgi-resource-locator:jar:1.0.3:compile
+[INFO] |  |  \- io.swagger:swagger-annotations:jar:1.6.0:compile
+[INFO] |  +- io.confluent:common-config:jar:5.5.1:compile
+[INFO] |  \- io.confluent:common-utils:jar:5.5.1:compile
+[INFO] \- org.apache.spark:spark-sql_2.12:jar:3.0.0:provided
+[INFO]    +- com.univocity:univocity-parsers:jar:2.8.3:provided
+[INFO]    +- org.apache.spark:spark-sketch_2.12:jar:3.0.0:provided
+[INFO]    +- org.apache.spark:spark-core_2.12:jar:3.0.0:provided
+[INFO]    |  +- com.thoughtworks.paranamer:paranamer:jar:2.8:provided
+[INFO]    |  +- org.apache.avro:avro-mapred:jar:hadoop2:1.8.2:provided
+[INFO]    |  |  \- org.apache.avro:avro-ipc:jar:1.8.2:provided
+[INFO]    |  +- com.twitter:chill_2.12:jar:0.9.5:provided
+[INFO]    |  |  \- com.esotericsoftware:kryo-shaded:jar:4.0.2:provided
+[INFO]    |  |     +- com.esotericsoftware:minlog:jar:1.3.0:provided
+[INFO]    |  |     \- org.objenesis:objenesis:jar:2.5.1:provided
+[INFO]    |  +- com.twitter:chill-java:jar:0.9.5:provided
+[INFO]    |  +- org.apache.hadoop:hadoop-client:jar:2.7.4:provided
+[INFO]    |  |  +- org.apache.hadoop:hadoop-common:jar:2.7.4:provided
+[INFO]    |  |  |  +- commons-cli:commons-cli:jar:1.2:provided
+[INFO]    |  |  |  +- xmlenc:xmlenc:jar:0.52:provided
+[INFO]    |  |  |  +- commons-httpclient:commons-httpclient:jar:3.1:provided
+[INFO]    |  |  |  +- commons-io:commons-io:jar:2.4:provided
+[INFO]    |  |  |  +- commons-collections:commons-collections:jar:3.2.2:provided
+[INFO]    |  |  |  +- org.mortbay.jetty:jetty-sslengine:jar:6.1.26:provided
+[INFO]    |  |  |  +- javax.servlet.jsp:jsp-api:jar:2.1:provided
+[INFO]    |  |  |  +- commons-configuration:commons-configuration:jar:1.6:provided
+[INFO]    |  |  |  |  \- commons-digester:commons-digester:jar:1.8:provided
+[INFO]    |  |  |  |     \- commons-beanutils:commons-beanutils:jar:1.7.0:provided
+[INFO]    |  |  |  +- com.google.code.gson:gson:jar:2.2.4:provided
+[INFO]    |  |  |  +- org.apache.hadoop:hadoop-auth:jar:2.7.4:provided
+[INFO]    |  |  |  |  +- org.apache.httpcomponents:httpclient:jar:4.2.5:provided
+[INFO]    |  |  |  |  |  \- org.apache.httpcomponents:httpcore:jar:4.2.4:provided
+[INFO]    |  |  |  |  \- org.apache.directory.server:apacheds-kerberos-codec:jar:2.0.0-M15:provided
+[INFO]    |  |  |  |     +- org.apache.directory.server:apacheds-i18n:jar:2.0.0-M15:provided
+[INFO]    |  |  |  |     +- org.apache.directory.api:api-asn1-api:jar:1.0.0-M20:provided
+[INFO]    |  |  |  |     \- org.apache.directory.api:api-util:jar:1.0.0-M20:provided
+[INFO]    |  |  |  +- org.apache.curator:curator-client:jar:2.7.1:provided
+[INFO]    |  |  |  \- org.apache.htrace:htrace-core:jar:3.1.0-incubating:provided
+[INFO]    |  |  +- org.apache.hadoop:hadoop-hdfs:jar:2.7.4:provided
+[INFO]    |  |  |  +- org.mortbay.jetty:jetty-util:jar:6.1.26:provided
+[INFO]    |  |  |  \- xerces:xercesImpl:jar:2.9.1:provided
+[INFO]    |  |  |     \- xml-apis:xml-apis:jar:1.3.04:provided
+[INFO]    |  |  +- org.apache.hadoop:hadoop-mapreduce-client-app:jar:2.7.4:provided
+[INFO]    |  |  |  +- org.apache.hadoop:hadoop-mapreduce-client-common:jar:2.7.4:provided
+[INFO]    |  |  |  |  +- org.apache.hadoop:hadoop-yarn-client:jar:2.7.4:provided
+[INFO]    |  |  |  |  \- org.apache.hadoop:hadoop-yarn-server-common:jar:2.7.4:provided
+[INFO]    |  |  |  \- org.apache.hadoop:hadoop-mapreduce-client-shuffle:jar:2.7.4:provided
+[INFO]    |  |  +- org.apache.hadoop:hadoop-yarn-api:jar:2.7.4:provided
+[INFO]    |  |  +- org.apache.hadoop:hadoop-mapreduce-client-core:jar:2.7.4:provided
+[INFO]    |  |  |  \- org.apache.hadoop:hadoop-yarn-common:jar:2.7.4:provided
+[INFO]    |  |  |     +- javax.xml.bind:jaxb-api:jar:2.2.2:provided
+[INFO]    |  |  |     |  \- javax.xml.stream:stax-api:jar:1.0-2:provided
+[INFO]    |  |  |     +- org.codehaus.jackson:jackson-jaxrs:jar:1.9.13:provided
+[INFO]    |  |  |     \- org.codehaus.jackson:jackson-xc:jar:1.9.13:provided
+[INFO]    |  |  +- org.apache.hadoop:hadoop-mapreduce-client-jobclient:jar:2.7.4:provided
+[INFO]    |  |  \- org.apache.hadoop:hadoop-annotations:jar:2.7.4:provided
+[INFO]    |  +- org.apache.spark:spark-launcher_2.12:jar:3.0.0:provided
+[INFO]    |  +- org.apache.spark:spark-kvstore_2.12:jar:3.0.0:provided
+[INFO]    |  |  \- org.fusesource.leveldbjni:leveldbjni-all:jar:1.8:provided
+[INFO]    |  +- org.apache.spark:spark-network-common_2.12:jar:3.0.0:provided
+[INFO]    |  +- org.apache.spark:spark-network-shuffle_2.12:jar:3.0.0:provided
+[INFO]    |  +- org.apache.spark:spark-unsafe_2.12:jar:3.0.0:provided
+[INFO]    |  +- javax.activation:activation:jar:1.1.1:provided
+[INFO]    |  +- org.apache.curator:curator-recipes:jar:2.7.1:provided
+[INFO]    |  |  +- org.apache.curator:curator-framework:jar:2.7.1:provided
+[INFO]    |  |  \- com.google.guava:guava:jar:16.0.1:provided
+[INFO]    |  +- org.apache.zookeeper:zookeeper:jar:3.4.14:provided
+[INFO]    |  |  \- org.apache.yetus:audience-annotations:jar:0.5.0:provided
+[INFO]    |  +- javax.servlet:javax.servlet-api:jar:3.1.0:provided
+[INFO]    |  +- org.apache.commons:commons-lang3:jar:3.9:provided
+[INFO]    |  +- org.apache.commons:commons-math3:jar:3.4.1:provided
+[INFO]    |  +- org.apache.commons:commons-text:jar:1.6:provided
+[INFO]    |  +- com.google.code.findbugs:jsr305:jar:3.0.0:provided
+[INFO]    |  +- org.slf4j:jul-to-slf4j:jar:1.7.30:provided
+[INFO]    |  +- org.slf4j:jcl-over-slf4j:jar:1.7.30:provided
+[INFO]    |  +- log4j:log4j:jar:1.2.17:provided
+[INFO]    |  +- org.slf4j:slf4j-log4j12:jar:1.7.30:provided
+[INFO]    |  +- com.ning:compress-lzf:jar:1.0.3:provided
+[INFO]    |  +- org.xerial.snappy:snappy-java:jar:1.1.7.5:compile
+[INFO]    |  +- org.lz4:lz4-java:jar:1.7.1:compile
+[INFO]    |  +- com.github.luben:zstd-jni:jar:1.4.4-3:compile
+[INFO]    |  +- org.roaringbitmap:RoaringBitmap:jar:0.7.45:provided
+[INFO]    |  |  \- org.roaringbitmap:shims:jar:0.7.45:provided
+[INFO]    |  +- commons-net:commons-net:jar:3.1:provided
+[INFO]    |  +- org.scala-lang.modules:scala-xml_2.12:jar:1.2.0:provided
+[INFO]    |  +- org.scala-lang:scala-library:jar:2.12.10:compile
+[INFO]    |  +- org.scala-lang:scala-reflect:jar:2.12.10:provided
+[INFO]    |  +- org.json4s:json4s-jackson_2.12:jar:3.6.6:provided
+[INFO]    |  |  \- org.json4s:json4s-core_2.12:jar:3.6.6:provided
+[INFO]    |  |     +- org.json4s:json4s-ast_2.12:jar:3.6.6:provided
+[INFO]    |  |     \- org.json4s:json4s-scalap_2.12:jar:3.6.6:provided
+[INFO]    |  +- org.glassfish.jersey.core:jersey-client:jar:2.30:provided
+[INFO]    |  +- org.glassfish.jersey.core:jersey-server:jar:2.30:provided
+[INFO]    |  |  +- org.glassfish.jersey.media:jersey-media-jaxb:jar:2.30:provided
+[INFO]    |  |  \- jakarta.validation:jakarta.validation-api:jar:2.0.2:provided
+[INFO]    |  +- org.glassfish.jersey.containers:jersey-container-servlet:jar:2.30:provided
+[INFO]    |  +- org.glassfish.jersey.containers:jersey-container-servlet-core:jar:2.30:provided
+[INFO]    |  +- org.glassfish.jersey.inject:jersey-hk2:jar:2.30:provided
+[INFO]    |  |  +- org.glassfish.hk2:hk2-locator:jar:2.6.1:provided
+[INFO]    |  |  |  +- org.glassfish.hk2.external:aopalliance-repackaged:jar:2.6.1:provided
+[INFO]    |  |  |  +- org.glassfish.hk2:hk2-api:jar:2.6.1:provided
+[INFO]    |  |  |  \- org.glassfish.hk2:hk2-utils:jar:2.6.1:provided
+[INFO]    |  |  \- org.javassist:javassist:jar:3.25.0-GA:provided
+[INFO]    |  +- io.netty:netty-all:jar:4.1.47.Final:provided
+[INFO]    |  +- com.clearspring.analytics:stream:jar:2.9.6:provided
+[INFO]    |  +- io.dropwizard.metrics:metrics-core:jar:4.1.1:provided
+[INFO]    |  +- io.dropwizard.metrics:metrics-jvm:jar:4.1.1:provided
+[INFO]    |  +- io.dropwizard.metrics:metrics-json:jar:4.1.1:provided
+[INFO]    |  +- io.dropwizard.metrics:metrics-graphite:jar:4.1.1:provided
+[INFO]    |  +- io.dropwizard.metrics:metrics-jmx:jar:4.1.1:provided
+[INFO]    |  +- com.fasterxml.jackson.module:jackson-module-scala_2.12:jar:2.10.0:provided
+[INFO]    |  |  \- com.fasterxml.jackson.module:jackson-module-paranamer:jar:2.10.0:provided
+[INFO]    |  +- org.apache.ivy:ivy:jar:2.4.0:provided
+[INFO]    |  +- oro:oro:jar:2.0.8:provided
+[INFO]    |  +- net.razorvine:pyrolite:jar:4.30:provided
+[INFO]    |  +- net.sf.py4j:py4j:jar:0.10.9:provided
+[INFO]    |  \- org.apache.commons:commons-crypto:jar:1.0.0:provided
+[INFO]    +- org.apache.spark:spark-catalyst_2.12:jar:3.0.0:provided
+[INFO]    |  +- org.scala-lang.modules:scala-parser-combinators_2.12:jar:1.1.2:provided
+[INFO]    |  +- org.codehaus.janino:janino:jar:3.0.16:provided
+[INFO]    |  +- org.codehaus.janino:commons-compiler:jar:3.0.16:provided
+[INFO]    |  +- org.antlr:antlr4-runtime:jar:4.7.1:provided
+[INFO]    |  +- commons-codec:commons-codec:jar:1.10:provided
+[INFO]    |  \- org.apache.arrow:arrow-vector:jar:0.15.1:provided
+[INFO]    |     +- org.apache.arrow:arrow-format:jar:0.15.1:provided
+[INFO]    |     +- org.apache.arrow:arrow-memory:jar:0.15.1:provided
+[INFO]    |     \- com.google.flatbuffers:flatbuffers-java:jar:1.9.0:provided
+[INFO]    +- org.apache.spark:spark-tags_2.12:jar:3.0.0:compile
+[INFO]    +- org.apache.orc:orc-core:jar:1.5.10:provided
+[INFO]    |  +- org.apache.orc:orc-shims:jar:1.5.10:provided
+[INFO]    |  +- com.google.protobuf:protobuf-java:jar:2.5.0:provided
+[INFO]    |  +- commons-lang:commons-lang:jar:2.6:provided
+[INFO]    |  +- io.airlift:aircompressor:jar:0.10:provided
+[INFO]    |  \- org.threeten:threeten-extra:jar:1.5.0:provided
+[INFO]    +- org.apache.orc:orc-mapreduce:jar:1.5.10:provided
+[INFO]    +- org.apache.hive:hive-storage-api:jar:2.7.1:provided
+[INFO]    +- org.apache.parquet:parquet-column:jar:1.10.1:provided
+[INFO]    |  +- org.apache.parquet:parquet-common:jar:1.10.1:provided
+[INFO]    |  \- org.apache.parquet:parquet-encoding:jar:1.10.1:provided
+[INFO]    +- org.apache.parquet:parquet-hadoop:jar:1.10.1:provided
+[INFO]    |  +- org.apache.parquet:parquet-format:jar:2.4.0:provided
+[INFO]    |  +- org.apache.parquet:parquet-jackson:jar:1.10.1:provided
+[INFO]    |  +- org.codehaus.jackson:jackson-mapper-asl:jar:1.9.13:provided
+[INFO]    |  \- org.codehaus.jackson:jackson-core-asl:jar:1.9.13:provided
+[INFO]    +- com.fasterxml.jackson.core:jackson-databind:jar:2.10.0:compile
+[INFO]    |  \- com.fasterxml.jackson.core:jackson-annotations:jar:2.10.0:compile
+[INFO]    +- org.apache.xbean:xbean-asm7-shaded:jar:4.15:provided
+[INFO]    \- org.spark-project.spark:unused:jar:1.0.0:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+```
 ### Clean up
 
 - Clean up dockerised kafka cluster by running 

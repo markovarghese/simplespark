@@ -37,7 +37,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # HADOOP
-ENV HADOOP_VERSION 3.2.1
+ENV HADOOP_VERSION 2.10.0
 ENV HADOOP_HOME /usr/hadoop-$HADOOP_VERSION
 ENV HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 ENV PATH $PATH:$HADOOP_HOME/bin

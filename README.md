@@ -286,6 +286,61 @@ you will get the following dependency tree
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
 ```
+
+#### Running the JAR without dependencies
+
+Ref https://github.com/AbsaOSS/ABRiS/issues/165#issuecomment-722987624 , we ran the app using the JAR without dependencies, using the command 
+```shell script
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-submit --repositories https://packages.confluent.io/maven --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:4.0.0 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar
+```
+
+It, however, failed to load the abris 4.0.0 package using Spark-submit, with the following error
+```text
+:::: WARNINGS
+                [NOT FOUND  ] javax.ws.rs#javax.ws.rs-api;2.1.1!javax.ws.rs-api.${packaging.type} (0ms)
+
+        ==== central: tried
+
+          https://repo1.maven.org/maven2/javax/ws/rs/javax.ws.rs-api/2.1.1/javax.ws.rs-api-2.1.1.${packaging.type}
+
+                ::::::::::::::::::::::::::::::::::::::::::::::
+
+                ::              FAILED DOWNLOADS            ::
+
+                :: ^ see resolution messages for details  ^ ::
+
+                ::::::::::::::::::::::::::::::::::::::::::::::
+
+                :: javax.ws.rs#javax.ws.rs-api;2.1.1!javax.ws.rs-api.${packaging.type}
+
+                ::::::::::::::::::::::::::::::::::::::::::::::
+
+
+
+:: USE VERBOSE OR DEBUG MESSAGE LEVEL FOR MORE DETAILS
+Exception in thread "main" java.lang.RuntimeException: [download failed: javax.ws.rs#javax.ws.rs-api;2.1.1!javax.ws.rs-api.${packaging.type}]
+        at org.apache.spark.deploy.SparkSubmitUtils$.resolveMavenCoordinates(SparkSubmit.scala:1389)
+        at org.apache.spark.deploy.DependencyUtils$.resolveMavenDependencies(DependencyUtils.scala:54)
+        at org.apache.spark.deploy.SparkSubmit.prepareSubmitEnvironment(SparkSubmit.scala:308)
+        at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:871)
+        at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
+        at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
+        at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
+        at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:1007)
+        at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:1016)
+        at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)
+```
+
+We get the same error when we try to load spark-shell using the command
+```shell script
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-shell --repositories https://packages.confluent.io/maven --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:4.0.0
+```
+
+However, if we use Abris 3.2.2 instead of 4.0.0, spark shell loads fine with the command
+```shell script
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-shell --repositories https://packages.confluent.io/maven --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:3.2.2
+```
+
 ### Clean up
 
 - Clean up dockerised kafka cluster by running 

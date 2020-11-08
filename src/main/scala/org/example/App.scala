@@ -1,10 +1,9 @@
 package org.example
-
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.functions._
+import za.co.absa.abris.avro.functions.to_confluent_avro
 import za.co.absa.abris.avro.parsing.utils.AvroSchemaUtils
-import za.co.absa.abris.config.{AbrisConfig, ToAvroConfig}
-import za.co.absa.abris.avro.functions.to_avro
+import za.co.absa.abris.avro.read.confluent.{SchemaManager, SchemaManagerFactory}
 
 /**
  * @author ${user.name}
@@ -25,16 +24,22 @@ object App {
     val df = rdd.toDF("Tvalues","Pvalues")
     df.show
     val topic: String = "test123"
+    val valueSchema:String = "{\"type\":\"record\",\"name\":\"topLevelRecord\",\"fields\":[{\"name\":\"Tvalues\",\"type\":\"double\"},{\"name\":\"Pvalues\",\"type\":\"double\"}]}"
     var allColumns = struct(df.columns.head, df.columns.tail: _*)
-    val tempdf = df.withColumn("allcolumns", allColumns)
-    val schema = AvroSchemaUtils.toAvroSchema(tempdf, "allcolumns")
-    println("avro schema = " + schema.toString())
-    val toAvroConfig: ToAvroConfig = AbrisConfig
-      .toConfluentAvro
-      .provideAndRegisterSchema(schema.toString())
-      .usingTopicNameStrategy(topic)
-      .usingSchemaRegistry("http://schema-registry:8081")
-    df.select(to_avro(allColumns, toAvroConfig) as 'value)
+
+    val commonRegistryConfig = Map(
+      SchemaManager.PARAM_SCHEMA_REGISTRY_TOPIC -> topic,
+      SchemaManager.PARAM_SCHEMA_REGISTRY_URL -> "http://schema-registry:8081"
+    )
+    val valueRegistryConfig = commonRegistryConfig ++ Map(
+      SchemaManager.PARAM_VALUE_SCHEMA_NAMING_STRATEGY -> "topic.name",
+      SchemaManager.PARAM_VALUE_SCHEMA_VERSION -> "latest"
+    )
+
+    val schemaManager = SchemaManagerFactory.create(valueRegistryConfig)
+    schemaManager.register(valueSchema)
+
+    df.select(to_confluent_avro(allColumns, valueRegistryConfig) as 'value)
       .write
       .option("kafka.bootstrap.servers", "broker:29092")
       .option("topic", topic)

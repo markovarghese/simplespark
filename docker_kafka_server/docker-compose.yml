@@ -2,7 +2,7 @@
 version: '2'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.5.1
+    image: "confluentinc/cp-zookeeper:${CONFLUENT_VERSION}"
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -12,7 +12,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-server:5.5.1
+    image: "confluentinc/cp-server:${CONFLUENT_VERSION}"
     hostname: broker
     container_name: broker
     depends_on:
@@ -39,7 +39,7 @@ services:
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:5.5.1
+    image: "confluentinc/cp-schema-registry:${CONFLUENT_VERSION}"
     hostname: schema-registry
     container_name: schema-registry
     depends_on:
@@ -83,7 +83,7 @@ services:
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       # CLASSPATH required due to CC-2422
-      CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-5.5.1.jar
+      CLASSPATH: "/usr/share/java/monitoring-interceptors/monitoring-interceptors-${CONFLUENT_VERSION}.jar"
       CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
       CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
@@ -92,7 +92,7 @@ services:
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
 
   control-center:
-    image: confluentinc/cp-enterprise-control-center:5.5.1
+    image: "confluentinc/cp-enterprise-control-center:${CONFLUENT_VERSION}"
     hostname: control-center
     container_name: control-center
     depends_on:
@@ -117,7 +117,7 @@ services:
       PORT: 9021
 
   ksqldb-server:
-    image: confluentinc/cp-ksqldb-server:5.5.1
+    image: "confluentinc/cp-ksqldb-server:${CONFLUENT_VERSION}"
     hostname: ksqldb-server
     container_name: ksqldb-server
     depends_on:
@@ -137,7 +137,7 @@ services:
       KSQL_KSQL_CONNECT_URL: "http://connect:8083"
 
   ksqldb-cli:
-    image: confluentinc/cp-ksqldb-cli:5.5.1
+    image: "confluentinc/cp-ksqldb-cli:${CONFLUENT_VERSION}"
     container_name: ksqldb-cli
     depends_on:
       - broker
@@ -147,7 +147,7 @@ services:
     tty: true
 
   ksql-datagen:
-    image: confluentinc/ksqldb-examples:5.5.1
+    image: "confluentinc/ksqldb-examples:${CONFLUENT_VERSION}"
     hostname: ksql-datagen
     container_name: ksql-datagen
     depends_on:
@@ -169,7 +169,7 @@ services:
       STREAMS_SCHEMA_REGISTRY_PORT: 8081
 
   rest-proxy:
-    image: confluentinc/cp-kafka-rest:5.5.1
+    image: "confluentinc/cp-kafka-rest:${CONFLUENT_VERSION}"
     depends_on:
       - zookeeper
       - broker

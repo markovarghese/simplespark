@@ -6,7 +6,7 @@
 
 - Stand up a dockerised kafka cluster by running 
 ```shell script
-docker-compose -f docker_kafka_server/docker-compose.yml up -d --build
+CONFLUENT_VERSION="5.5.2" docker-compose -f docker_kafka_server/docker-compose.yml up -d --build
 ```
 
 - Build an image for a dockerised spark server
@@ -289,40 +289,37 @@ you will get the following dependency tree
 
 #### Running the JAR without dependencies
 
-Ref https://github.com/AbsaOSS/ABRiS/issues/165#issuecomment-722987624 , we ran the app using the JAR without dependencies, using the command 
+Ref https://github.com/AbsaOSS/ABRiS/issues/165#issuecomment-723848375 , we ran the app using the JAR without dependencies, using the command 
 ```shell script
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-submit --repositories https://packages.confluent.io/maven --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:4.0.0 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:4.0.0 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar
 ```
 
-It, however, failed to load the abris 4.0.0 package using Spark-submit, with the following error
+It too fails with the same error
 ```text
-:::: WARNINGS
-                [NOT FOUND  ] javax.ws.rs#javax.ws.rs-api;2.1.1!javax.ws.rs-api.${packaging.type} (0ms)
-
-        ==== central: tried
-
-          https://repo1.maven.org/maven2/javax/ws/rs/javax.ws.rs-api/2.1.1/javax.ws.rs-api-2.1.1.${packaging.type}
-
-                ::::::::::::::::::::::::::::::::::::::::::::::
-
-                ::              FAILED DOWNLOADS            ::
-
-                :: ^ see resolution messages for details  ^ ::
-
-                ::::::::::::::::::::::::::::::::::::::::::::::
-
-                :: javax.ws.rs#javax.ws.rs-api;2.1.1!javax.ws.rs-api.${packaging.type}
-
-                ::::::::::::::::::::::::::::::::::::::::::::::
-
-
-
-:: USE VERBOSE OR DEBUG MESSAGE LEVEL FOR MORE DETAILS
-Exception in thread "main" java.lang.RuntimeException: [download failed: javax.ws.rs#javax.ws.rs-api;2.1.1!javax.ws.rs-api.${packaging.type}]
-        at org.apache.spark.deploy.SparkSubmitUtils$.resolveMavenCoordinates(SparkSubmit.scala:1389)
-        at org.apache.spark.deploy.DependencyUtils$.resolveMavenDependencies(DependencyUtils.scala:54)
-        at org.apache.spark.deploy.SparkSubmit.prepareSubmitEnvironment(SparkSubmit.scala:308)
-        at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:871)
+2020-11-10 02:10:10,852 INFO confluent.SchemaManager: AvroSchemaUtils.registerIfCompatibleSchema: Registering schema for subject: za.co.absa.abris.avro.registry.SchemaSubject@3e0e0ba7
+Exception in thread "main" java.lang.NoSuchFieldError: FACTORY
+        at org.apache.avro.Schemas.toString(Schemas.java:36)
+        at org.apache.avro.Schemas.toString(Schemas.java:30)
+        at io.confluent.kafka.schemaregistry.avro.AvroSchema.canonicalString(AvroSchema.java:140)
+        at io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient.registerAndGetId(CachedSchemaRegistryClient.java:206)
+        at io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient.register(CachedSchemaRegistryClient.java:268)
+        at io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient.register(CachedSchemaRegistryClient.java:244)
+        at io.confluent.kafka.schemaregistry.client.SchemaRegistryClient.register(SchemaRegistryClient.java:42)
+        at za.co.absa.abris.avro.read.confluent.SchemaManager.register(SchemaManager.scala:77)
+        at za.co.absa.abris.avro.read.confluent.SchemaManager.$anonfun$getIfExistsOrElseRegisterSchema$1(SchemaManager.scala:124)
+        at scala.runtime.java8.JFunction0$mcI$sp.apply(JFunction0$mcI$sp.java:23)
+        at scala.Option.getOrElse(Option.scala:189)
+        at za.co.absa.abris.avro.read.confluent.SchemaManager.getIfExistsOrElseRegisterSchema(SchemaManager.scala:124)
+        at za.co.absa.abris.config.ToSchemaRegisteringConfigFragment.usingSchemaRegistry(Config.scala:135)
+        at za.co.absa.abris.config.ToSchemaRegisteringConfigFragment.usingSchemaRegistry(Config.scala:131)
+        at org.example.App$.main(App.scala:36)
+        at org.example.App.main(App.scala)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:498)
+        at org.apache.spark.deploy.JavaMainApplication.start(SparkApplication.scala:52)
+        at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:928)
         at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
         at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
         at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
@@ -331,19 +328,9 @@ Exception in thread "main" java.lang.RuntimeException: [download failed: javax.w
         at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)
 ```
 
-We get the same error when we try to load spark-shell using the command
-```shell script
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-shell --repositories https://packages.confluent.io/maven --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:4.0.0
-```
-
-However, if we use Abris 3.2.2 instead of 4.0.0, spark shell loads fine with the command
-```shell script
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark3.0.1-scala2.12-hadoop3.2.1:latest spark-shell --repositories https://packages.confluent.io/maven --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1,za.co.absa:abris_2.12:3.2.2
-```
-
 ### Clean up
 
 - Clean up dockerised kafka cluster by running 
 ```shell script
-docker-compose -f docker_kafka_server/docker-compose.yml down
+CONFLUENT_VERSION="5.5.2" docker-compose -f docker_kafka_server/docker-compose.yml down
 ```

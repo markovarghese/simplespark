@@ -16,12 +16,9 @@
     </licenses>
 
     <properties>
-        <scala.version>2.12.10</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.0.0</spark.version>
-        <spark.avro.version>4.0.0</spark.avro.version>
-        <scala.plugin.version>3.4.2</scala.plugin.version>
-        <confluent.version>5.5.1</confluent.version>
+        <abris.version>4.0.0</abris.version>
     </properties>
 
     <dependencies>
@@ -29,7 +26,7 @@
         <dependency>
             <groupId>za.co.absa</groupId>
             <artifactId>abris_${scala.binary.version}</artifactId>
-            <version>4.0.0</version>
+            <version>${abris.version}</version>
         </dependency>
 
         <dependency>

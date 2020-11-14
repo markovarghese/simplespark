@@ -75,7 +75,40 @@ Exception in thread "main" java.lang.UnsupportedOperationException: Cannot evalu
 ```
 
 ##### Workaround
-Use the following script instead, to generate the schema (ref )
+Use the following script instead, to generate the schema (ref [src/main/scala/org/example/App.scala#L35-L36](blob/spark3.0.1-scala2.12-hadoop2.10.0-abris4.0.1/src/main/scala/org/example/App.scala#L35-L36) ).
+```scala
+  val tempdf = df.withColumn("allcolumns", allColumns)
+  val schema = toAvroSchema(tempdf, "allcolumns")
+```
+
+#### Minor Issue 2
+If you run the Spark application on a spark cluster with Hadoop 3.0.0 to 3.2.1, you will get the following runtime error
+```text
+2020-11-14 23:32:33,626 ERROR executor.Executor: Exception in task 6.0 in stage 3.0 (TID 22)
+java.lang.NoSuchMethodError: org.apache.kafka.clients.producer.KafkaProducer.flush()V
+        at org.apache.spark.sql.kafka010.KafkaWriteTask.$anonfun$close$1(KafkaWriteTask.scala:61)
+        at org.apache.spark.sql.kafka010.KafkaWriteTask.$anonfun$close$1$adapted(KafkaWriteTask.scala:60)
+        at scala.Option.foreach(Option.scala:407)
+        at org.apache.spark.sql.kafka010.KafkaWriteTask.close(KafkaWriteTask.scala:60)
+        at org.apache.spark.sql.kafka010.KafkaWriter$.$anonfun$write$3(KafkaWriter.scala:73)
+        at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1386)
+        at org.apache.spark.sql.kafka010.KafkaWriter$.$anonfun$write$1(KafkaWriter.scala:73)
+        at org.apache.spark.sql.kafka010.KafkaWriter$.$anonfun$write$1$adapted(KafkaWriter.scala:70)
+        at org.apache.spark.rdd.RDD.$anonfun$foreachPartition$2(RDD.scala:994)
+        at org.apache.spark.rdd.RDD.$anonfun$foreachPartition$2$adapted(RDD.scala:994)
+        at org.apache.spark.SparkContext.$anonfun$runJob$5(SparkContext.scala:2139)
+        at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)
+        at org.apache.spark.scheduler.Task.run(Task.scala:127)
+        at org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:446)
+        at org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1377)
+        at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:449)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+        at java.lang.Thread.run(Thread.java:748)
+```
+
+##### Workaround
+Run the spark application on a spark cluster with Hadoop 3.0.0 or Hadoop 2.x (I've tested successfully with 2.8.5 and 2.10.0)
 
 ### Clean up
 

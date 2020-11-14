@@ -16,9 +16,9 @@
     </licenses>
 
     <properties>
-        <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.4.6</spark.version>
-        <abris.version>4.0.0</abris.version>
+        <scala.binary.version>2.12</scala.binary.version>
+        <spark.version>3.0.1</spark.version>
+        <abris.version>4.0.1</abris.version>
     </properties>
 
     <dependencies>

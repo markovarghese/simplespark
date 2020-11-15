@@ -108,7 +108,7 @@ java.lang.NoSuchMethodError: org.apache.kafka.clients.producer.KafkaProducer.flu
 ```
 
 ##### Workaround
-Run the spark application on a spark cluster with Hadoop 3.0.0 or Hadoop 2.x (I've tested successfully with 2.8.5 and 2.10.0)
+Run the spark application on a spark cluster with Hadoop 3.3.0 or Hadoop 2.x (I've tested successfully with 2.8.5 and 2.10.0)
 
 ### Clean up
 

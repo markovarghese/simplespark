@@ -40,6 +40,8 @@ There are some minor issues.
 
 #### Minor Issue 1
 
+This has been reported already, at https://github.com/AbsaOSS/ABRiS/issues/170
+
 If you use 
 ```scala
   val expression = allColumns.expr

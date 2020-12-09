@@ -1,13 +1,18 @@
 package org.example
 
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.sql.avro.SchemaConverters.toAvroType
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.streaming.kafka010.{KafkaUtils}
 import za.co.absa.abris.config.{AbrisConfig, ToAvroConfig, ToStrategyConfigFragment}
 import za.co.absa.abris.avro.functions.to_avro
 import za.co.absa.abris.avro.read.confluent.SchemaManagerFactory
 import za.co.absa.abris.avro.registry.SchemaSubject
-import org.apache.spark.streaming._
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
+import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
+
 
 /**
  * @author ${user.name}
@@ -45,8 +50,24 @@ object App {
     //sink dstream to a file
   }
 
-  def kafkaToDStream (spark: SparkSession) : Unit= {
-    val ssc = new org.apache.spark.streaming.Streaming StreamingContext(spark.sparkContext, Seconds(1))
+  def kafkaToDStream (spark: SparkSession,topic: String,kafkaBroker: String, schemaRegistryUrl: String) : Unit= {
+    val kafkaParams = Map[String, Object](
+      "bootstrap.servers" -> "kafkaBroker",
+      "key.deserializer" -> classOf[StringDeserializer],
+      "value.deserializer" -> classOf[StringDeserializer],
+      "group.id" -> "use_a_separate_group_id_for_each_stream",
+      "auto.offset.reset" -> "latest",
+      "enable.auto.commit" -> (false: java.lang.Boolean)
+    )
+    val topics = Array("topic")
+    val ssc = new StreamingContext(spark.sparkContext, Seconds(1))
+    val stream = KafkaUtils.createDirectStream[String, String](
+      ssc,
+      PreferConsistent,
+      Subscribe[String, String](topics, kafkaParams)
+    )
+    stream.map(record => (record.key, record.value))
+
   }
 
   def dataFrameToKafka(spark: SparkSession, df: DataFrame, valueField: String, topic: String, kafkaBroker: String, schemaRegistryUrl: String, valueSchemaVersion: Option[Int] = None, valueSubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , valueSubjectRecordName: Option[String] = None, valueSubjectRecordNamespace: Option[String] = None, keyField: Option[String] = None, keySchemaVersion: Option[Int] = None, keySubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , keySubjectRecordName: Option[String] = None, keySubjectRecordNamespace: Option[String] = None, headerField: Option[String] = None): Unit = {

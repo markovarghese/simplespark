@@ -7,6 +7,7 @@ import za.co.absa.abris.config.{AbrisConfig, ToAvroConfig, ToStrategyConfigFragm
 import za.co.absa.abris.avro.functions.to_avro
 import za.co.absa.abris.avro.read.confluent.SchemaManagerFactory
 import za.co.absa.abris.avro.registry.SchemaSubject
+import org.apache.spark.streaming._
 
 /**
  * @author ${user.name}
@@ -38,6 +39,14 @@ object App {
     //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
     //write to a specific schema
     //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSchemaVersion = Some(1), keySchemaVersion = Some(1), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
+
+    //read kafka to dstream
+
+    //sink dstream to a file
+  }
+
+  def kafkaToDStream (spark: SparkSession) : Unit= {
+    val ssc = new org.apache.spark.streaming.Streaming StreamingContext(spark.sparkContext, Seconds(1))
   }
 
   def dataFrameToKafka(spark: SparkSession, df: DataFrame, valueField: String, topic: String, kafkaBroker: String, schemaRegistryUrl: String, valueSchemaVersion: Option[Int] = None, valueSubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , valueSubjectRecordName: Option[String] = None, valueSubjectRecordNamespace: Option[String] = None, keyField: Option[String] = None, keySchemaVersion: Option[Int] = None, keySubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , keySubjectRecordName: Option[String] = None, keySubjectRecordNamespace: Option[String] = None, headerField: Option[String] = None): Unit = {

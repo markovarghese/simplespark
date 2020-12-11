@@ -1,17 +1,12 @@
 package org.example
 
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.sql.avro.SchemaConverters.toAvroType
-import org.apache.spark.sql.types.{StructField, StructType}
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
-import org.apache.spark.streaming.kafka010.{KafkaUtils}
-import za.co.absa.abris.config.{AbrisConfig, ToAvroConfig, ToStrategyConfigFragment}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession,Dataset}
+import za.co.absa.abris.config._
 import za.co.absa.abris.avro.functions.to_avro
 import za.co.absa.abris.avro.read.confluent.SchemaManagerFactory
 import za.co.absa.abris.avro.registry.SchemaSubject
-import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
-import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
+import za.co.absa.abris.avro.functions.from_avro
 
 
 /**
@@ -33,13 +28,14 @@ object App {
     var df = rdd.toDF("Tvalues", "Pvalues")
     df.createOrReplaceTempView("df")
     df = spark.sql("SELECT named_struct('Tvalues', Tvalues, 'Pvalues', Pvalues) as value, uuid() as key, (SELECT COLLECT_SET(named_struct('hello', 'world'))) as headers FROM df")
-    df.show
+   // df.show
     df.printSchema()
     val topic: String = "test123"
     val schemaRegistry: String = "http://schema-registry:8081"
     val broker = "broker:29092"
     //create the schema
     dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
+    kafkaToDStream(spark = spark,topic = topic,kafkaBroker = broker,schemaRegistryUrl = schemaRegistry)
     //write to the latest schema
     //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
     //write to a specific schema
@@ -50,23 +46,27 @@ object App {
     //sink dstream to a file
   }
 
-  def kafkaToDStream (spark: SparkSession,topic: String,kafkaBroker: String, schemaRegistryUrl: String) : Unit= {
-    val kafkaParams = Map[String, Object](
-      "bootstrap.servers" -> "kafkaBroker",
-      "key.deserializer" -> classOf[StringDeserializer],
-      "value.deserializer" -> classOf[StringDeserializer],
-      "group.id" -> "use_a_separate_group_id_for_each_stream",
-      "auto.offset.reset" -> "latest",
-      "enable.auto.commit" -> (false: java.lang.Boolean)
-    )
-    val topics = Array("topic")
-    val ssc = new StreamingContext(spark.sparkContext, Seconds(1))
-    val stream = KafkaUtils.createDirectStream[String, String](
-      ssc,
-      PreferConsistent,
-      Subscribe[String, String](topics, kafkaParams)
-    )
-    stream.map(record => (record.key, record.value))
+  def kafkaToDStream (spark: SparkSession,topic: String,kafkaBroker: String, schemaRegistryUrl: String,subjectNamingStrategy: String = "TopicNameStrategy", subjectRecordName: Option[String] = None, subjectRecordNamespace: Option[String] = None) : Unit= {
+    val df = spark
+      .readStream
+      .format("kafka")
+      .option("kafka.bootstrap.servers", kafkaBroker)
+      .option("subscribe", topic)
+      .option("schema.registry.url",schemaRegistryUrl)
+      .option("startingoffsets", "earliest")
+      .load()
+    df.createOrReplaceTempView("df")
+    println("****************************************************")
+    val fromAvroConfig=GetFromAvroConfig(topic=topic,schemaRegistryUrl=schemaRegistryUrl,isKey = false,subjectNamingStrategy="TopicRecordNameStrategy",subjectRecordName=Some("PotentialRmdEntry"),subjectRecordNamespace=Some("com.expediagroup.dataplatform"))
+ // val dft = spark.sql("select topic,value from df")
+  val dft=  df.select(from_avro(df.col("value"), fromAvroConfig) as 'data).select("data.*")
+
+    val query = dft.writeStream
+      .outputMode("append")
+      .format("console")
+      .start()
+
+    query.awaitTermination()
 
   }
 
@@ -89,7 +89,32 @@ object App {
       .format("kafka")
       .save()
   }
+  def GetFromAvroConfig(topic: String, schemaRegistryUrl: String, schemaVersion: Option[Int] = None, isKey: Boolean = false, subjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , subjectRecordName: Option[String] = None, subjectRecordNamespace: Option[String] = None): FromAvroConfig = {
+    //get the specified schema version
+    //if not specified, then get the latest schema from Schema Registry
+    //if the topic does not have a schema then create and register the schema
+    //applies to both key and value
+    val subject = if (subjectNamingStrategy.equalsIgnoreCase("TopicRecordNameStrategy")) SchemaSubject.usingTopicRecordNameStrategy(topicName = topic, recordName = subjectRecordName.getOrElse(""), recordNamespace = subjectRecordNamespace.getOrElse("")) else if (subjectNamingStrategy.equalsIgnoreCase("RecordNameStrategy")) SchemaSubject.usingRecordNameStrategy(recordName = subjectRecordName.getOrElse(""), recordNamespace = subjectRecordNamespace.getOrElse("")) else SchemaSubject.usingTopicNameStrategy(topicName = topic, isKey = isKey) // Use isKey=true for the key schema and isKey=false for the value schema
+    val schemaRegistryClientConfig = Map(AbrisConfig.SCHEMA_REGISTRY_URL -> schemaRegistryUrl)
+    val schemaManager = SchemaManagerFactory.create(schemaRegistryClientConfig)
+    println((if (isKey) "key" else "value") + " subject = " + subject.asString)
+    var fromAvroConfig: FromAvroConfig = null
+      val avroConfigFragment = AbrisConfig
+        .fromConfluentAvro
+      var fromStrategyConfigFragment: FromStrategyConfigFragment = null
+      if (schemaVersion.isEmpty) {
+        fromStrategyConfigFragment = avroConfigFragment.downloadReaderSchemaByLatestVersion
+      }
+      else {
+        fromStrategyConfigFragment = avroConfigFragment.downloadReaderSchemaByVersion(schemaVersion.get)
+      }
+      fromAvroConfig = fromStrategyConfigFragment
+        .andTopicNameStrategy(topic, isKey = isKey)
+        .usingSchemaRegistry(schemaRegistryUrl)
 
+    println((if (isKey) "key" else "value") + " avro schema expected by schema registry  = " + fromAvroConfig.schemaString)
+    fromAvroConfig
+  }
   def GetToAvroConfig(topic: String, schemaRegistryUrl: String, dfColumn: Column, schemaVersion: Option[Int] = None, isKey: Boolean = false, subjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , subjectRecordName: Option[String] = None, subjectRecordNamespace: Option[String] = None): ToAvroConfig = {
     //get the specified schema version
     //if not specified, then get the latest schema from Schema Registry

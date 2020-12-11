@@ -16,39 +16,50 @@ docker build -f ./docker_spark_server/Dockerfile -t spark2.4.6-scala2.11-hadoop2
 ```shell script
 docker run -e MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled" --rm -v "${PWD}":/usr/src/mymaven -v "${HOME}/.m2":/root/.m2 -w /usr/src/mymaven maven:3.6.3-jdk-8 mvn clean install
 ```
+
+- Create folders to watch for more dataset1 data, and archive once read
+```shell script
+mkdir csvfolder
+mkdir archivefolder
+```
+
 - Run the Spark application using the dockerised spark server
 ```shell script
 # Use either ONE of the following commands
 # ...using JAR with dependencies...
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT-jar-with-dependencies.jar dataset1.csv
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT-jar-with-dependencies.jar
 # ... OR, using JAR without dependencies...
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6,za.co.absa:abris_2.11:4.0.1 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar  dataset1.csv
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6,za.co.absa:abris_2.11:4.0.1 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar
 ```
 
-- Open the url http://http://localhost:9021/clusters and, using the menu options on the left, navigate to the "Topics" screen to see a topic "ptopics" with the data in the file dataset1.csv
-
-- Also, browse through your console output to view the batch to stream join of the topic ptopic with the data in dataset2.csv
+- Open the url http://http://localhost:9021/clusters and, using the menu options on the left, navigate to the "Topics" screen
 
 - On a second terminal, run 
 ```shell script
-# Use either ONE of the following commands
-# ...using JAR with dependencies...
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT-jar-with-dependencies.jar moredataset1.csv false
-# ... OR, using JAR without dependencies...
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6,za.co.absa:abris_2.11:4.0.1 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar  moredataset1.csv false
+cp moredataset1.csv csvfolder/dataset1.csv
 ```
 
-- Watch the first terminal's  console output to view the batch to stream join of the new data in the topic ptopic (from moredataset1.csv) with the data in dataset2.csv
+- Watch topic "ptopic" get the data in the file dataset1.csv
+
+- Watch topic "pmtopic" get the batch-to-stream join of the topic ptopic with the data in dataset2.csv
+
+- On a second terminal, run
+```shell script
+cp moredataset1.csv csvfolder/moredataset1.csv
+```
+
+- Watch the `pmtopic` topic to view the join of the new data in the topic `ptopic` (from moredataset1.csv that was detected by spark) with the data in dataset2.csv
 
 ### Ideal result
 
 This demo does the following...
-1. Create 2 dataframes of numerical data that can be joined
-1. Write the first to a kafka topic `ptopic` as a batch (seeding the data for our lil' demo)
+1. Write any new/changed CSV file to a kafka topic `ptopic` 
 1. Read `ptopic` as a stream 
 1. Join the stream to the batch data in `dataset2.csv`
-1. Independently put more data from `moredataset1.csv` into the topic `ptopic`
-1. The main application continues to join the new data as it comes into the topic `ptopic`
+1. Manually put data from `dataset1.csv` into the topic `ptopic`
+1. The main application join the new data as it comes into the topic `pmtopic`
+1. Manually put more data from `moredataset1.csv` into the topic `ptopic`
+1. Watch both streams update
 
 ### What's stopping us?
 
@@ -89,3 +100,12 @@ Run the spark application on a spark cluster with Hadoop 3.3.0 or Hadoop 2.x (I'
 ```shell script
 CONFLUENT_VERSION="5.5.2" docker-compose -f docker_kafka_server/docker-compose.yml down
 ```
+Cleanup files created by this demo by running
+```shell
+sudo chown -R $(whoami):$(whoami) .
+rm -rf archivefolder
+rm -rf csvfolder
+rm -rf checkpointfolder
+```
+
+> Use `sudo chown -R $(whoami):$(whoami) .` to get access to folders/files created by docker

@@ -1,7 +1,8 @@
 package org.example
 
 import org.apache.spark.sql.avro.SchemaConverters.toAvroType
-import org.apache.spark.sql.{Column, DataFrame, SparkSession, Dataset}
+import org.apache.spark.sql.streaming.StreamingQuery
+import org.apache.spark.sql.{Column, DataFrame, Dataset, SparkSession}
 import za.co.absa.abris.config._
 import za.co.absa.abris.avro.functions.to_avro
 import za.co.absa.abris.avro.read.confluent.SchemaManagerFactory
@@ -15,73 +16,81 @@ import za.co.absa.abris.avro.functions.from_avro
 object App {
 
   def main(args: Array[String]): Unit = {
-    if (args.length == 0) {
-      println("Please provide 2 arguments. The first argument is the name of the file to use as dataset to kafka. Set second argument to false if you don't want to do the stream join")
-    } else {
-      val spark: SparkSession = SparkSession
-        .builder()
-        .master("local[*]")
-        .appName("ETLJob")
-        .getOrCreate()
-      val fileToRead = args(0);
-      val doStreamJoin: Boolean = (args.length < 2) || (!(args(1).equalsIgnoreCase("false")))
-      println("create first dataset")
-      /*
-      val kvalues: Array[Double] = Array(1.8, 2.8, 4.0, 7.8, 4.8, 14.3)
-      val pvalues: Array[Double] = Array(0.6, 0.4, 8.9, 7.4, 2.8, 0.0)
-      val rdd1 = spark.sparkContext.parallelize(kvalues zip pvalues)
-      import spark.implicits._
-      val dftokafka = rdd1.toDF("Kvalues", "Pvalues")
-       */
-      var dftokafka = spark.read.option("header", true)
-        .csv(fileToRead)
-      dftokafka.createOrReplaceTempView("dftokafka")
+    val spark: SparkSession = SparkSession
+      .builder()
+      .master("local[*]")
+      .appName("ETLJob")
+      .getOrCreate()
 
-      println("create second dataset")
-      /*
-      val mvalues: Array[Double] = Array(0.6, 0.4, 8.9, 7.4, 2.8, 0.0)
-      val rdd2 = spark.sparkContext.parallelize(kvalues zip mvalues)
-      import spark.implicits._
-      var df2 = rdd2.toDF("Kvalues", "Mvalues")
-       */
-      val df2 = spark.read.option("header", true)
-        .csv("dataset2.csv")
-      df2.createOrReplaceTempView("df2")
+    println("create first dataset by watching the ccsvfolder")
+    /*
+    val kvalues: Array[Double] = Array(1.8, 2.8, 4.0, 7.8, 4.8, 14.3)
+    val pvalues: Array[Double] = Array(0.6, 0.4, 8.9, 7.4, 2.8, 0.0)
+    val rdd1 = spark.sparkContext.parallelize(kvalues zip pvalues)
+    import spark.implicits._
+    val dftokafka = rdd1.toDF("Kvalues", "Pvalues")
+     */
+    var dftokafka = spark
+      .readStream
+      .schema(spark.read.option("header", true).csv("dataset1.csv").schema)
+      .option("header", true)
+      .option("cleanSource", "archive")
+      .option("sourceArchiveDir ", "archivefolder")
+      .csv("csvfolder")
+    dftokafka.createOrReplaceTempView("dftokafka")
 
-      println("write first dataset to kafka")
-      dftokafka = spark.sql("SELECT named_struct('Kvalues', Kvalues, 'Pvalues', Pvalues) as value, uuid() as key, (SELECT COLLECT_SET(named_struct('hello', 'world'))) as headers FROM dftokafka")
-      //dftokafka.printSchema()
-      val topic: String = "ptopic"
-      val schemaRegistry: String = "http://schema-registry:8081"
-      val broker = "broker:29092"
-      val subjectRecordNamespace = "MySubjectRecordNamespace"
-      val subjectRecordName = "MySubjectRecordNames"
-      val subjectNamingStrategy = "TopicRecordNameStrategy"
-      //create the schema
-      dataFrameToKafka(df = dftokafka, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = subjectNamingStrategy, valueSubjectRecordNamespace = Some(subjectRecordNamespace), valueSubjectRecordName = Some(subjectRecordName))
+    println("create second dataset")
+    /*
+    val mvalues: Array[Double] = Array(0.6, 0.4, 8.9, 7.4, 2.8, 0.0)
+    val rdd2 = spark.sparkContext.parallelize(kvalues zip mvalues)
+    import spark.implicits._
+    var df2 = rdd2.toDF("Kvalues", "Mvalues")
+     */
+    val df2 = spark.read.option("header", true)
+      .csv("dataset2.csv")
+    df2.createOrReplaceTempView("df2")
 
-      //write to the latest schema
-      //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
-      //write to a specific schema
-      //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSchemaVersion = Some(1), keySchemaVersion = Some(1), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
-      if (doStreamJoin) {
-        //read kafka to dataframe
-        println("read first dataset from kafka as a stream")
-        val dfFromKafka = kafkaToDataFrame(spark = spark, topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, subjectNamingStrategy = subjectNamingStrategy, subjectRecordNamespace = Some(subjectRecordNamespace), subjectRecordName = Some(subjectRecordName))
-        dfFromKafka.createOrReplaceTempView("dfFromKafka")
+    println("write watched csv data to kafka")
+    dftokafka = spark.sql("SELECT named_struct('Kvalues', Kvalues, 'Pvalues', Pvalues) as value, uuid() as key, (SELECT COLLECT_SET(named_struct('hello', 'world'))) as headers FROM dftokafka")
+    //dftokafka.printSchema()
+    val pTopic: String = "ptopic"
+    val pmTopic: String = "pmtopic"
+    val schemaRegistry: String = "http://schema-registry:8081"
+    val broker = "broker:29092"
+    val subjectRecordNamespace = "MySubjectRecordNamespace"
+    val subjectRecordName = "MySubjectRecordNames"
+    val subjectNamingStrategy = "TopicRecordNameStrategy"
 
-        println("join streaming first dataset to static second dataset")
-        val joinedDF = spark.sql("SELECT dfFromKafka.KValues, dfFromKafka.PValues, df2.MValues FROM dfFromKafka INNER JOIN df2 ON dfFromKafka.KValues = df2.KValues")
+    val queryP = dataFrameToKafka(df = dftokafka, spark = spark, valueField = "value", topic = pTopic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = subjectNamingStrategy, valueSubjectRecordNamespace = Some(subjectRecordNamespace), valueSubjectRecordName = Some(subjectRecordName), streamIt = true)
 
-        //sink dataset to console
-        val query = joinedDF.writeStream
-          .outputMode("append")
-          .format("console")
-          .start()
+    //write to the latest schema
+    //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
+    //write to a specific schema
+    //dataFrameToKafka(df = df, spark = spark, valueField = "value", topic = topic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), headerField = Some("headers"), valueSchemaVersion = Some(1), keySchemaVersion = Some(1), valueSubjectNamingStrategy = "TopicRecordNameStrategy", valueSubjectRecordNamespace = Some("com.expediagroup.dataplatform"), valueSubjectRecordName = Some("PotentialRmdEntry"))
 
-        query.awaitTermination()
-      }
-    }
+    //read kafka to dataframe
+    println("read first dataset from kafka as a stream")
+    val dfFromKafka = kafkaToDataFrame(spark = spark, topic = pTopic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, subjectNamingStrategy = subjectNamingStrategy, subjectRecordNamespace = Some(subjectRecordNamespace), subjectRecordName = Some(subjectRecordName))
+    dfFromKafka.createOrReplaceTempView("dfFromKafka")
+
+    println("join streaming first dataset to static second dataset")
+    val joinedDF = spark.sql("SELECT named_struct('Kvalues', dfFromKafka.KValues, 'Pvalues', dfFromKafka.PValues, 'MValues', df2.MValues) as value, uuid() as key  FROM dfFromKafka INNER JOIN df2 ON dfFromKafka.KValues = df2.KValues")
+
+    //sink joined dataset into new kafka topic
+    val queryPM = dataFrameToKafka(df = joinedDF, spark = spark, valueField = "value", topic = pmTopic, kafkaBroker = broker, schemaRegistryUrl = schemaRegistry, keyField = Some("key"), valueSubjectNamingStrategy = subjectNamingStrategy, valueSubjectRecordNamespace = Some(subjectRecordNamespace), valueSubjectRecordName = Some(subjectRecordName), streamIt = true)
+
+    spark.streams.awaitAnyTermination()
+
+    //sink dataset to console
+    /*
+    val query = joinedDF.writeStream
+      .outputMode("append")
+      .format("console")
+      .start()
+
+    query.awaitTermination()
+     */
+
   }
 
   def kafkaToDataFrame(spark: SparkSession, topic: String, kafkaBroker: String, schemaRegistryUrl: String, subjectNamingStrategy: String = "TopicNameStrategy", subjectRecordName: Option[String] = None, subjectRecordNamespace: Option[String] = None): DataFrame = {
@@ -91,10 +100,9 @@ object App {
       .option("kafka.bootstrap.servers", kafkaBroker)
       .option("subscribe", topic)
       .option("schema.registry.url", schemaRegistryUrl)
-      .option("startingoffsets", "earliest")
+      //.option("startingoffsets", "earliest")
       .load()
     df.createOrReplaceTempView("df")
-    println("****************************************************")
     val fromAvroConfig = GetFromAvroConfig(topic = topic, schemaRegistryUrl = schemaRegistryUrl, isKey = false, subjectNamingStrategy = subjectNamingStrategy, subjectRecordName = subjectRecordName, subjectRecordNamespace = subjectRecordNamespace)
     // val dft = spark.sql("select topic,value from df")
     df.printSchema()
@@ -102,7 +110,7 @@ object App {
     dft
   }
 
-  def dataFrameToKafka(spark: SparkSession, df: DataFrame, valueField: String, topic: String, kafkaBroker: String, schemaRegistryUrl: String, valueSchemaVersion: Option[Int] = None, valueSubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , valueSubjectRecordName: Option[String] = None, valueSubjectRecordNamespace: Option[String] = None, keyField: Option[String] = None, keySchemaVersion: Option[Int] = None, keySubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , keySubjectRecordName: Option[String] = None, keySubjectRecordNamespace: Option[String] = None, headerField: Option[String] = None): Unit = {
+  def dataFrameToKafka(spark: SparkSession, df: DataFrame, valueField: String, topic: String, kafkaBroker: String, schemaRegistryUrl: String, valueSchemaVersion: Option[Int] = None, valueSubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , valueSubjectRecordName: Option[String] = None, valueSubjectRecordNamespace: Option[String] = None, keyField: Option[String] = None, keySchemaVersion: Option[Int] = None, keySubjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , keySubjectRecordName: Option[String] = None, keySubjectRecordNamespace: Option[String] = None, headerField: Option[String] = None, streamIt: Boolean = false): StreamingQuery = {
     var dfavro = spark.emptyDataFrame
     var columnsToSelect = Seq(to_avro(df.col(valueField), GetToAvroConfig(topic = topic, schemaRegistryUrl = schemaRegistryUrl, dfColumn = df.col(valueField), schemaVersion = valueSchemaVersion, isKey = false, subjectNamingStrategy = valueSubjectNamingStrategy, subjectRecordName = valueSubjectRecordName, subjectRecordNamespace = valueSubjectRecordNamespace)) as 'value)
     if (!keyField.isEmpty) {
@@ -114,12 +122,24 @@ object App {
     }
     dfavro = df.select(columnsToSelect: _*)
     dfavro.printSchema()
-    dfavro.write
-      .option("kafka.bootstrap.servers", kafkaBroker)
-      .option("topic", topic)
-      .option("includeHeaders", (!headerField.isEmpty).toString)
-      .format("kafka")
-      .save()
+    var streamingQuery: StreamingQuery = null
+    if (streamIt) {
+      streamingQuery = dfavro.writeStream
+        .option("kafka.bootstrap.servers", kafkaBroker)
+        .option("topic", topic)
+        .option("includeHeaders", (!headerField.isEmpty).toString)
+        .option("checkpointLocation", "checkpointfolder/" + topic)
+        .format("kafka")
+        .start()
+    } else {
+      dfavro.write
+        .option("kafka.bootstrap.servers", kafkaBroker)
+        .option("topic", topic)
+        .option("includeHeaders", (!headerField.isEmpty).toString)
+        .format("kafka")
+        .save()
+    }
+    streamingQuery
   }
 
   def GetFromAvroConfig(topic: String, schemaRegistryUrl: String, schemaVersion: Option[Int] = None, isKey: Boolean = false, subjectNamingStrategy: String = "TopicNameStrategy" /*other options are RecordNameStrategy, TopicRecordNameStrategy*/ , subjectRecordName: Option[String] = None, subjectRecordNamespace: Option[String] = None): FromAvroConfig = {

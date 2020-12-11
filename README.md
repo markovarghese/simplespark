@@ -2,8 +2,6 @@
 
 ## Run locally
 
-> please note that this repo was crearted to share an issue I'm facing. Hence the following instructions are to reproduce the issue. Until the issue ios resolved, you won't see data being moved
-
 - Stand up a dockerised kafka cluster by running 
 ```shell script
 CONFLUENT_VERSION="5.5.2" docker-compose -f docker_kafka_server/docker-compose.yml up -d --build
@@ -22,15 +20,35 @@ docker run -e MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetas
 ```shell script
 # Use either ONE of the following commands
 # ...using JAR with dependencies...
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT-jar-with-dependencies.jar
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT-jar-with-dependencies.jar dataset1.csv
 # ... OR, using JAR without dependencies...
-docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6,za.co.absa:abris_2.11:4.0.1 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6,za.co.absa:abris_2.11:4.0.1 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar  dataset1.csv
 ```
-- Open the url http://http://localhost:9021/clusters and, using the menu options on the left, navigate to the "Topics" screen
+
+- Open the url http://http://localhost:9021/clusters and, using the menu options on the left, navigate to the "Topics" screen to see a topic "ptopics" with the data in the file dataset1.csv
+
+- Also, browse through your console output to view the batch to stream join of the topic ptopic with the data in dataset2.csv
+
+- On a second terminal, run 
+```shell script
+# Use either ONE of the following commands
+# ...using JAR with dependencies...
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT-jar-with-dependencies.jar moredataset1.csv false
+# ... OR, using JAR without dependencies...
+docker run -v $(pwd):/core -w /core -it --rm --network docker_kafka_server_default  spark2.4.6-scala2.11-hadoop2.10.0:latest spark-submit --repositories https://packages.confluent.io/maven --packages io.confluent:kafka-schema-registry-client:5.5.2,org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.6,za.co.absa:abris_2.11:4.0.1 --deploy-mode client --class org.example.App target/simplespark-1.0-SNAPSHOT.jar  moredataset1.csv false
+```
+
+- Watch the first terminal's  console output to view the batch to stream join of the new data in the topic ptopic (from moredataset1.csv) with the data in dataset2.csv
 
 ### Ideal result
 
-The spark application will create a topic `test123`, register the schema of a Spark dataframe with two numeric fields, and then write the records of the dataframe to the topic `test123`. You should be able to see the topic `test123` on the Topics screen of Confluent Control Center at http://localhost:9021/ ; and you should be ab le browse through the messages written into the topic. 
+This demo does the following...
+1. Create 2 dataframes of numerical data that can be joined
+1. Write the first to a kafka topic `ptopic` as a batch (seeding the data for our lil' demo)
+1. Read `ptopic` as a stream 
+1. Join the stream to the batch data in `dataset2.csv`
+1. Independently put more data from `moredataset1.csv` into the topic `ptopic`
+1. The main application continues to join the new data as it comes into the topic `ptopic`
 
 ### What's stopping us?
 
